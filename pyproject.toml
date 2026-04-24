@@ -56,6 +56,12 @@ lint = [
     "ruff==0.3.7",
     "flake8==7.3.0",
 ]
+# Static type checker. Pinned exactly so a new mypy release can't turn
+# CI red on an otherwise-unchanged commit. Run locally with
+# `pip install -e .[typecheck]` then `mypy inventory`.
+typecheck = [
+    "mypy==1.20.1",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -79,3 +85,18 @@ select = ["E", "F", "W", "I"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["inventory"]
+
+[tool.mypy]
+# Lenient baseline — tightens can happen in follow-up PRs without
+# flipping the whole tree red in one go. See issue #20 for the
+# rationale and the "ratchet" plan.
+python_version = "3.10"
+warn_unused_ignores = true
+warn_redundant_casts = true
+# Library code is fully annotated; require that to stay true.
+disallow_untyped_defs = true
+# But don't fight the test suite yet — fixture/Hypothesis typing is
+# its own project. Revisit in a follow-up issue.
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true

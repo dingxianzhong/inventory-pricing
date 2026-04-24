@@ -3,12 +3,12 @@
 ## Development setup
 
 Clone the repo and install it in editable mode with the `test` and
-`lint` extras:
+`lint`, and `typecheck` extras:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -e .[test,lint]
+pip install -e .[test,lint,typecheck]
 ```
 
 ### Running tests
@@ -31,6 +31,23 @@ Tool versions are pinned in two places that must be kept in sync: the
 `lint` extra in `pyproject.toml` (used by CI) and the `rev:` fields in
 `.pre-commit-config.yaml` (used by developers locally). Bump them
 together in the same commit.
+
+### Type checking
+
+`mypy` runs in CI as a separate job and can be run locally:
+
+```bash
+pip install -e .[typecheck]
+mypy inventory
+```
+
+The config lives under `[tool.mypy]` in `pyproject.toml`. The baseline
+is deliberately lenient: `disallow_untyped_defs = true` is enforced on
+the library (`inventory/`) so new untyped code can't land, but tests
+are exempt for now (`[[tool.mypy.overrides]] module = "tests.*"`
+→ `ignore_errors = true`). Tightening the config is tracked as
+follow-up work; please don't add `# type: ignore` without a specific
+error code and a brief comment explaining why.
 
 ### Pre-commit hooks
 

@@ -11,7 +11,7 @@ class Product:
     unit_price: float
     weight_kg: float = 0.0
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.unit_price < 0:
             raise ValueError("unit_price must be non-negative")
 
@@ -34,7 +34,7 @@ class Warehouse:
     name: str
     stock: dict[str, int] = field(default_factory=dict)
 
-    def add(self, sku: str, qty: int):
+    def add(self, sku: str, qty: int) -> None:
         self.stock[sku] = self.stock.get(sku, 0) + qty
 
     def remove(self, sku: str, qty: int) -> bool:
