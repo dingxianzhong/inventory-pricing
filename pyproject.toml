@@ -39,6 +39,15 @@ Repository = "https://github.com/dingxianzhong/inventory-pricing"
 Changelog = "https://github.com/dingxianzhong/inventory-pricing/blob/main/CHANGELOG.md"
 Issues = "https://github.com/dingxianzhong/inventory-pricing/issues"
 
+[project.optional-dependencies]
+# Dependencies needed to run the test suite. CI installs the package
+# with `pip install -e .[test]`. Kept separate from any future `dev`
+# extra so CI doesn't pull in linters/type-checkers it doesn't need.
+test = [
+    "pytest",
+    "hypothesis",
+]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["inventory*"]
