@@ -16,7 +16,8 @@ def test_version_is_pep440_ish():
     # is surfaced via importlib.metadata at import time.
     assert isinstance(inventory.__version__, str)
     assert re.match(
-        r"^\d+(\.\d+)+((a|b|rc)\d+)?(\.post\d+)?(\.dev\d+)?(\+[A-Za-z0-9.]+)?$",
+        r"^\d+(\.\d+)+((a|b|rc)\d+)?(\.post\d+)?"
+        r"(\.dev\d+)?(\+[A-Za-z0-9.]+)?$",
         inventory.__version__,
     ), f"not PEP 440-ish: {inventory.__version__!r}"
 
@@ -89,6 +90,7 @@ def test_version_falls_back_to_local_sentinel_when_dist_not_found(
         # checkout. This is the same regex used in
         # test_version_is_pep440_ish above, kept in sync intentionally.
         assert re.match(
-            r"^\d+(\.\d+)+((a|b|rc)\d+)?(\.post\d+)?(\.dev\d+)?(\+[A-Za-z0-9.]+)?$",
+            r"^\d+(\.\d+)+((a|b|rc)\d+)?(\.post\d+)?"
+            r"(\.dev\d+)?(\+[A-Za-z0-9.]+)?$",
             reloaded.__version__,
         ), reloaded.__version__

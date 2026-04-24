@@ -66,7 +66,10 @@ def compute_total(
             behavior hides catalog-sync errors and produces under-priced
             totals; prefer pre-filtering ``order.items`` against ``catalog``::
 
-                known = [(sku, qty) for sku, qty in order.items if sku in catalog]
+                known = [
+                    (sku, qty) for sku, qty in order.items
+                    if sku in catalog
+                ]
                 filtered = Order(order_id=order.order_id, items=known,
                                  customer=order.customer)
                 compute_total(filtered, catalog, discount_pct)

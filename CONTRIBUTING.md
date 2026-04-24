@@ -1,5 +1,53 @@
 # Contributing
 
+## Development setup
+
+Clone the repo and install it in editable mode with the `test` and
+`lint` extras:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .[test,lint]
+```
+
+### Running tests
+
+```bash
+pytest -v
+```
+
+### Linting
+
+Two tools run on every commit (via pre-commit) and in CI:
+
+- `ruff` — configured via `[tool.ruff]` in `pyproject.toml`
+  (defaults + isort). Run locally with `ruff check inventory tests`
+  or with `--fix` to auto-apply safe fixes.
+- `flake8` — the classic pycodestyle/pyflakes linter.
+  Run locally with `flake8 inventory tests`.
+
+Tool versions are pinned in two places that must be kept in sync: the
+`lint` extra in `pyproject.toml` (used by CI) and the `rev:` fields in
+`.pre-commit-config.yaml` (used by developers locally). Bump them
+together in the same commit.
+
+### Pre-commit hooks
+
+Install the hooks once per clone so ruff/flake8 run on every commit
+automatically:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+Run all hooks across the whole repo on demand:
+
+```bash
+pre-commit run --all-files
+```
+
 ## Releases
 
 Releases are cut by pushing a `v<version>` tag that matches the `version`

@@ -1,0 +1,23 @@
+# Versions below are pinned exactly. They MUST be kept in sync with the
+# `lint` extra in pyproject.toml — CI installs linters from the extra
+# while developers run them via pre-commit, and the two paths need to
+# agree or the build will fail on "clean" commits. If you bump one,
+# bump the other in the same commit.
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.7
+    hooks:
+      - id: ruff
+        args: [--fix]
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.3.0
+    hooks:
+      - id: flake8
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
