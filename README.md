@@ -135,6 +135,20 @@ python -m pytest tests/ -v
   its count reaches `0`, so `stock` only ever contains positive counts
   and `add(new_sku, n) + remove(new_sku, n)` is a true no-op.
 
+  ```python
+  from inventory.models import Warehouse
+
+  # Default behavior (unchanged): zero-stock SKUs linger in `stock`.
+  w = Warehouse(name="w", stock={"A": 3})
+  w.remove("A", 3)
+  assert w.stock == {"A": 0}   # "A" still present with value 0
+
+  # Opt-in: zero-stock SKUs are removed from `stock`.
+  w = Warehouse(name="w", stock={"A": 3}, delete_on_zero=True)
+  w.remove("A", 3)
+  assert w.stock == {}          # "A" deleted on reaching 0
+  ```
+
   The default (`False`) preserves existing behavior exactly — SKUs
   removed to zero remain in `stock` with value `0`, and `monthly_report`
   and `stock_alert(threshold=0)` continue to see them.
