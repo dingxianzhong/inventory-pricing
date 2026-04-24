@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 # unrelated project, so we publish under `inventory-pricing` and
 # users do `pip install inventory-pricing` / `import inventory`.
 name = "inventory-pricing"
-version = "0.1.0"
+version = "0.1.1"
 # NOTE: `requires-python` is the pyproject.toml equivalent of setup.py's
 # `python_requires=">=3.10"`. setuptools propagates it to the built
 # distributions' `Requires-Python` metadata, so `pip install` on older
