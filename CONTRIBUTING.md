@@ -5,52 +5,71 @@
 Releases are cut by pushing a `v<version>` tag that matches the `version`
 field in `pyproject.toml`. The `Release` workflow
 (`.github/workflows/release.yml`) then runs the full test matrix, builds
-sdist + wheel, attaches them to a GitHub Release, and (optionally)
-uploads to TestPyPI and PyPI.
+sdist + wheel, attaches them to a GitHub Release, and uploads to
+TestPyPI and PyPI.
 
-### Required repository secrets
+### Authentication: PyPI Trusted Publishing (OIDC)
 
-Two Actions secrets gate the PyPI uploads. They are **optional** in the
-sense that the workflow is designed not to fail when they are absent
-(so forks and test-tag pushes stay green), but if you want a tag to
-actually reach PyPI, both must be set:
+Uploads authenticate to PyPI and TestPyPI via
+[Trusted Publishing][tp] — no long-lived API token is stored in the
+repo. Each workflow run mints a short-lived OIDC credential that PyPI
+validates against a pre-registered tuple of (GitHub owner, repo,
+workflow filename, environment).
 
-| Secret name           | Where to get it                         | Used by                   |
-| --------------------- | --------------------------------------- | ------------------------- |
-| `TEST_PYPI_API_TOKEN` | <https://test.pypi.org/manage/account/> | `testpypi-publish` job    |
-| `PYPI_API_TOKEN`      | <https://pypi.org/manage/account/>      | `pypi-publish` job        |
+[tp]: https://docs.pypi.org/trusted-publishers/
 
-Add them under **Settings → Secrets and variables → Actions → Repository
-secrets**. The `gh` CLI equivalent (from a clone of this repo):
+This means:
 
-```bash
-gh secret set TEST_PYPI_API_TOKEN --repo dingxianzhong/inventory-pricing
-gh secret set PYPI_API_TOKEN      --repo dingxianzhong/inventory-pricing
-```
+- No token to rotate, leak, or forget to add. The 0.1.1-era failure
+  mode of "secret silently missing from Actions scope → publish skips
+  → tagged release never reaches PyPI" is structurally impossible —
+  misconfiguration makes the job **fail**, not silently skip.
+- Forks cannot publish. OIDC credentials are bound to the upstream
+  `dingxianzhong/inventory-pricing` repo, and the workflow is
+  additionally guarded with
+  `if: github.repository == 'dingxianzhong/inventory-pricing'` on
+  both publish jobs.
 
-Note: the secrets live under the **Actions** scope specifically — not
-Dependabot secrets, not Codespaces secrets, and not Variables. An
-easy-to-make mistake is putting them in the wrong tab; if that happens,
-the publish jobs will silently skip (see below).
+### One-time setup on PyPI / TestPyPI
 
-### What a missing-secret run looks like
+If you're standing this up on a fresh repo (or re-registering after a
+rename), configure each index once via the web UI:
 
-If either token is absent when a `v*` tag is pushed, the corresponding
-publish job still reports success (by design) but emits a workflow
-annotation at the top of the run summary page:
+**PyPI** — <https://pypi.org/manage/project/inventory-pricing/settings/publishing/>
 
-> ⚠️ **PyPI publish skipped** — `PYPI_API_TOKEN` secret is not set on
-> this repository, so the PyPI upload was skipped. …
+- PyPI Project Name: `inventory-pricing`
+- Owner: `dingxianzhong`
+- Repository name: `inventory-pricing`
+- Workflow filename: `release.yml`
+- Environment name: `pypi`
 
-The annotation is yellow, appears above the job graph, and links back
-to the repo's secrets page. If you tagged a release expecting it to
-publish and you see one of these annotations instead, the fix is to
-add the missing secret and re-run the workflow (`gh run rerun <id>`) —
-no re-tagging needed.
+**TestPyPI** — <https://test.pypi.org/manage/project/inventory-pricing/settings/publishing/>
 
-This warning exists because we shipped the 0.1.1 release with three
-successive green workflow runs that were all silently skipping
-publish; the annotation makes that state impossible to miss on the
-next round. The longer-term fix is migrating to PyPI trusted
-publishing (OIDC), tracked in issue #3, which removes the need for
-long-lived tokens entirely.
+- Same four fields, except Environment name: `testpypi`
+
+(For a project that doesn't exist on (Test)PyPI yet, use the "pending
+publisher" flow under the account's Publishing tab instead — it
+pre-authorizes the first upload to create the project.)
+
+On the GitHub side, create the two environments under **Settings →
+Environments**:
+
+- `pypi`
+- `testpypi`
+
+Environments may be left with default settings; they exist so the OIDC
+binding has something concrete to reference. Optional hardening:
+protection rules (required reviewers, tag pattern restriction to
+`v*`) can be added to either environment without changing the
+workflow.
+
+### What a misconfigured run looks like
+
+Unlike the previous token-based flow, a missing or misconfigured
+publisher registration causes the publish job to **fail**, not
+silently succeed. The failing step is the
+`pypa/gh-action-pypi-publish` action itself, and its error message
+names the mismatched field (wrong workflow filename, wrong
+environment, unregistered repo, etc.). Fix the registration on the
+PyPI side and re-run the workflow with `gh run rerun <id>` — no
+re-tagging needed.
