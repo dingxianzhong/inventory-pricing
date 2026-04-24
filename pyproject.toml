@@ -47,6 +47,15 @@ test = [
     "pytest",
     "hypothesis",
 ]
+# Dependencies for the `lint` CI job and the `.pre-commit-config.yaml`
+# hooks. Versions are pinned exactly and MUST be kept in sync with the
+# `rev:` fields in `.pre-commit-config.yaml` — otherwise CI (which
+# installs from here) and local pre-commit runs will disagree. If you
+# bump one, bump the other in the same commit.
+lint = [
+    "ruff==0.3.7",
+    "flake8==7.3.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -54,3 +63,19 @@ include = ["inventory*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+# Minimum Python we still support (mirrors project.requires-python).
+target-version = "py310"
+# Keep line length aligned with flake8's default so the two tools agree.
+line-length = 79
+# Only lint our own code and tests; don't walk into generated/vendored dirs.
+include = ["inventory/**/*.py", "tests/**/*.py"]
+
+[tool.ruff.lint]
+# Ruff defaults are E + F (pycodestyle errors + pyflakes). Add W
+# (pycodestyle warnings, matches flake8's default) and I (isort).
+select = ["E", "F", "W", "I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["inventory"]
