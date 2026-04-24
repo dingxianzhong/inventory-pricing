@@ -135,6 +135,9 @@ python -m pytest tests/ -v
   its count reaches `0`, so `stock` only ever contains positive counts
   and `add(new_sku, n) + remove(new_sku, n)` is a true no-op.
 
+  Design context and deprecation-timeline options are written up in
+  [RFC 021](docs/rfcs/021-delete-on-zero.md).
+
   ```python
   from inventory.models import Warehouse
 
