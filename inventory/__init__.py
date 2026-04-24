@@ -1,8 +1,9 @@
 """A toy inventory management library."""
 
-from importlib.metadata import PackageNotFoundError, version as _dist_version
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _dist_version
 
-from .models import Product, Warehouse, Order
+from .models import Order, Product, Warehouse
 from .pricing import apply_discount, compute_total
 from .reports import monthly_report, stock_alert
 

@@ -60,7 +60,8 @@ def test_compute_total_simple():
 def test_compute_total_with_discount():
     catalog = {"A": Product(sku="A", name="Apple", unit_price=10.0)}
     order = Order(order_id="o1", items=[("A", 2)])
-    assert compute_total(order, catalog, discount_pct=25.0) == pytest.approx(15.0)
+    total = compute_total(order, catalog, discount_pct=25.0)
+    assert total == pytest.approx(15.0)
 
 
 def test_compute_total_unknown_sku_raises():

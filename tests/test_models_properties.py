@@ -6,10 +6,10 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from hypothesis import given, strategies as st
+from hypothesis import given
+from hypothesis import strategies as st
 
 from inventory.models import Warehouse
-
 
 # --- Strategies ------------------------------------------------------------
 
