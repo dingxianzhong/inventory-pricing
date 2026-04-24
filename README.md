@@ -129,3 +129,18 @@ python -m pytest tests/ -v
   with `qty == threshold` is reported.
 - `inventory.pricing.bulk_price` applies the 10% discount at `qty >= 100`
   (boundary included).
+- `inventory.models.Warehouse` has an **experimental `delete_on_zero`
+  constructor flag** (default `False`). When set to `True`,
+  `Warehouse.remove(sku, qty)` deletes the SKU from `stock` as soon as
+  its count reaches `0`, so `stock` only ever contains positive counts
+  and `add(new_sku, n) + remove(new_sku, n)` is a true no-op.
+
+  The default (`False`) preserves existing behavior exactly — SKUs
+  removed to zero remain in `stock` with value `0`, and `monthly_report`
+  and `stock_alert(threshold=0)` continue to see them.
+
+  This flag is an opt-in toggle for the Option A proposal in
+  [#21](https://github.com/dingxianzhong/inventory-pricing/issues/21)
+  and may change or be removed based on that issue's resolution. No
+  deprecation warning is emitted by either default; this is a spike
+  for feedback, not a committed API.
