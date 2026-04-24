@@ -18,6 +18,19 @@ class Product:
 
 @dataclass
 class Warehouse:
+    """A named inventory container tracking per-SKU quantities.
+
+    Note on zero-quantity SKUs:
+        ``add(sku, 0)`` creates a ``stock`` entry with value 0 for a new
+        SKU. ``remove(sku, qty)`` with ``qty > 0`` decrements the count
+        down to zero and leaves the SKU in ``stock`` with value ``0``.
+        This "present at 0" state is distinguishable from "absent SKU"
+        and is observable via ``monthly_report`` and
+        ``stock_alert(threshold=0)``. Whether to collapse the two states
+        is tracked as a design decision in issue #21:
+        https://github.com/dingxianzhong/inventory-pricing/issues/21
+    """
+
     name: str
     stock: dict[str, int] = field(default_factory=dict)
 
