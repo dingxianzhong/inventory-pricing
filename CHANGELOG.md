@@ -5,6 +5,24 @@ All notable changes to this project are documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Tests: property-based coverage (`tests/test_*_properties.py`) for
+  pricing, reports, and models invariants using Hypothesis.
+  Covers `compute_total` linearity, `apply_discount` monotonicity and
+  endpoint identities, `monthly_report` distributivity over partitions
+  and order-independence, and `Warehouse.add` + `remove` round-trips.
+  Also pins `monthly_report`'s zero-quantity SKU preservation behavior
+  with targeted regression tests. See PR #22.
+- CI: `lint` job (ruff + flake8) and `typecheck` job (mypy) running in
+  parallel with the existing test matrix. Tool versions pinned via the
+  new `lint` and `typecheck` optional-dependency extras in
+  `pyproject.toml`. Pre-commit config (`ruff --fix`, flake8,
+  `end-of-file-fixer`, `trailing-whitespace`) and contributor docs
+  added. See PRs #23, #24.
+
 ## [0.1.2rc1] - 2026-04-24
 
 Pre-release on TestPyPI only. First release cut via PyPI Trusted
