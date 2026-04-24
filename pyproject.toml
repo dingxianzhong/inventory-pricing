@@ -3,8 +3,13 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "inventory"
-version = "2.0.0"
+# Distribution name on PyPI. The import package is still `inventory`
+# (see `[tool.setuptools.packages.find].include` below); only the
+# on-PyPI name changed — `inventory` was already taken by an
+# unrelated project, so we publish under `inventory-pricing` and
+# users do `pip install inventory-pricing` / `import inventory`.
+name = "inventory-pricing"
+version = "0.1.0"
 # NOTE: `requires-python` is the pyproject.toml equivalent of setup.py's
 # `python_requires=">=3.10"`. setuptools propagates it to the built
 # distributions' `Requires-Python` metadata, so `pip install` on older
@@ -29,9 +34,10 @@ classifiers = [
 # the authoritative source for PyPI going forward.
 
 [project.urls]
-Homepage = "https://github.com/acme-corp/inventory"
-Repository = "https://github.com/acme-corp/inventory"
-Changelog = "https://github.com/acme-corp/inventory/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/dingxianzhong/inventory-pricing"
+Repository = "https://github.com/dingxianzhong/inventory-pricing"
+Changelog = "https://github.com/dingxianzhong/inventory-pricing/blob/main/CHANGELOG.md"
+Issues = "https://github.com/dingxianzhong/inventory-pricing/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]

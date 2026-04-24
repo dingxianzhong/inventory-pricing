@@ -4,7 +4,7 @@ from .models import Product, Warehouse, Order
 from .pricing import apply_discount, compute_total
 from .reports import monthly_report, stock_alert
 
-__version__ = "2.0.0"
+__version__ = "0.1.0"
 
 __all__ = [
     "__version__",

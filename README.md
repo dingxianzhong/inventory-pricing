@@ -1,10 +1,29 @@
-# inventory
+# inventory-pricing
 
-[![CI](https://github.com/acme-corp/inventory/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/acme-corp/inventory/actions/workflows/ci.yml)
+[![CI](https://github.com/dingxianzhong/inventory-pricing/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dingxianzhong/inventory-pricing/actions/workflows/ci.yml)
 
 Toy inventory-management library.
 
-Layout:
+## Install
+
+```
+pip install inventory-pricing
+```
+
+Heads-up: the **distribution name** (what you `pip install`) is
+`inventory-pricing`, but the **import name** is plain `inventory`:
+
+```python
+from inventory.models import Product, Order
+from inventory.pricing import compute_total
+```
+
+This split exists because `inventory` was already taken on PyPI by an
+unrelated project. Distribution-name ≠ import-name is common in the
+Python ecosystem (e.g. `pip install PyYAML` → `import yaml`).
+
+## Layout
+
 - `inventory/models.py` — Product, Warehouse, Order
 - `inventory/pricing.py` — apply_discount, compute_total, bulk_price
 - `inventory/reports.py` — stock_alert, monthly_report

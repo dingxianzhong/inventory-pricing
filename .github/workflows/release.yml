@@ -76,7 +76,11 @@ jobs:
           set -euo pipefail
           python -m venv /tmp/smoke
           /tmp/smoke/bin/pip install --upgrade pip
-          /tmp/smoke/bin/pip install dist/inventory-*-py3-none-any.whl
+          # Wheel filename uses the *distribution* name with hyphens
+          # normalized to underscores: inventory-pricing -> inventory_pricing.
+          # The import package is still `inventory` (see `import inventory`
+          # below).
+          /tmp/smoke/bin/pip install dist/inventory_pricing-*-py3-none-any.whl
           cd /tmp
           /tmp/smoke/bin/python - <<'PY'
           import os, re
@@ -112,7 +116,8 @@ jobs:
           ), [str(w.message) for w in rec]
 
           # 4. Metadata: license + URLs + classifiers.
-          m = metadata("inventory")
+          # metadata() takes the *distribution* name, not the import name.
+          m = metadata("inventory-pricing")
           assert m["License-Expression"] == "Apache-2.0", m["License-Expression"]
           assert m["Requires-Python"] == ">=3.10", m["Requires-Python"]
           urls = dict(u.split(", ", 1) for u in (m.get_all("Project-URL") or []))
