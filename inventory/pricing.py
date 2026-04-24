@@ -71,10 +71,10 @@ def compute_total(
                                  customer=order.customer)
                 compute_total(filtered, catalog, discount_pct)
     """
-    # TODO(#TBD): Remove the `strict` parameter in 3.0.0. See tracking issue
-    # for the full checklist (drop param, remove warning/tests/docs, bump
-    # README/CHANGELOG). Draft: .github/ISSUE_remove_strict_false_3_0_0.md.
-    # Replace #TBD with the real issue number once filed.
+    # TODO(#1): Remove the `strict` parameter in 3.0.0. See the tracking
+    # issue for the full checklist (drop param, remove warning/tests/docs,
+    # bump README/CHANGELOG):
+    # https://github.com/dingxianzhong/inventory-pricing/issues/1
     if not strict:
         warnings.warn(
             "[inventory] compute_total(strict=False) is deprecated and will "
