@@ -1,6 +1,8 @@
 # inventory-pricing
 
-[![CI](https://github.com/dingxianzhong/inventory-pricing/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dingxianzhong/inventory-pricing/actions/workflows/ci.yml)
+[![tests](https://img.shields.io/github/check-runs/dingxianzhong/inventory-pricing/main?nameFilter=pytest%20%28py3.11%20%2F%20ubuntu-latest%29&label=tests)](https://github.com/dingxianzhong/inventory-pricing/actions/workflows/ci.yml)
+[![lint](https://img.shields.io/github/check-runs/dingxianzhong/inventory-pricing/main?nameFilter=lint%20%28ruff%20%2B%20flake8%29&label=lint)](https://github.com/dingxianzhong/inventory-pricing/actions/workflows/ci.yml)
+[![mypy](https://img.shields.io/github/check-runs/dingxianzhong/inventory-pricing/main?nameFilter=mypy&label=mypy)](https://github.com/dingxianzhong/inventory-pricing/actions/workflows/ci.yml)
 
 Toy inventory-management library.
 
