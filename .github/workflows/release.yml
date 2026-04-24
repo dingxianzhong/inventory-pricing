@@ -171,51 +171,47 @@ jobs:
           fail_on_unmatched_files: true
 
   # ---------------------------------------------------------------------------
-  # 4. Optional TestPyPI publish. Runs before the real PyPI step so we can
-  #    catch metadata / upload issues on the staging index first. Gated on
-  #    TEST_PYPI_API_TOKEN; absent secret ⇒ job is a no-op (doesn't fail).
+  # 4. Publish to TestPyPI via PyPI Trusted Publishing (OIDC). Runs before the
+  #    real PyPI step so metadata / upload issues surface on the staging
+  #    index first.
+  #
+  #    Auth model: no long-lived API token. `id-token: write` lets the job
+  #    mint a short-lived OIDC credential per run; TestPyPI validates it
+  #    against the (owner, repo, workflow filename, environment) tuple
+  #    pre-registered on test.pypi.org. See CONTRIBUTING.md → Releases for
+  #    the one-time setup.
+  #
+  #    Fork safety: forks cannot mint an OIDC token for this repo, and the
+  #    `environment: testpypi` below is only defined on the upstream repo,
+  #    so fork runs of this workflow will simply skip/fail-closed on this
+  #    job without leaking anything. The `if:` guard makes the skip explicit
+  #    and keeps fork runs green.
   #
   #    Note: TestPyPI treats filename reuse the same as PyPI — you can't
-  #    re-upload the same version. `skip-existing: true` is intentional here
-  #    so re-running the workflow on the same tag (e.g. to retry the real
+  #    re-upload the same version. `skip-existing: true` is intentional so
+  #    re-running the workflow on the same tag (e.g. to retry the real
   #    PyPI publish) doesn't error out on the TestPyPI side.
   # ---------------------------------------------------------------------------
   testpypi-publish:
-    name: Publish to TestPyPI (optional)
+    name: Publish to TestPyPI
     needs: build
     runs-on: ubuntu-latest
+    if: github.repository == 'dingxianzhong/inventory-pricing'
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/inventory-pricing/
+    permissions:
+      id-token: write   # required for OIDC trusted publishing
+      contents: read
     steps:
-      - name: Check for TEST_PYPI_API_TOKEN
-        id: check
-        env:
-          TEST_PYPI_API_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
-        run: |
-          # Emitting `::warning::` (rather than a plain echo) surfaces this
-          # as a yellow annotation on the workflow run summary page, not just
-          # buried in step logs. During the 0.1.1 release we shipped three
-          # green workflow runs in a row where publish was silently skipping
-          # because the secret had been added to the wrong scope; a loud
-          # annotation would have caught that in seconds. See issue #3 for
-          # the longer-term fix (migrating to OIDC trusted publishing, which
-          # removes the need for this guard entirely).
-          if [ -n "${TEST_PYPI_API_TOKEN:-}" ]; then
-            echo "have_token=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "have_token=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=TestPyPI publish skipped::TEST_PYPI_API_TOKEN secret is not set on this repository, so the TestPyPI upload was skipped. The workflow is not failing because forks and test-tag pushes intentionally tolerate missing secrets, but if you expected this tag to publish, add the secret under Settings > Secrets and variables > Actions (https://github.com/${{ github.repository }}/settings/secrets/actions) and re-run this workflow. See issue #3 for the OIDC migration that removes this class of mistake."
-          fi
-
       - uses: actions/download-artifact@v4
-        if: steps.check.outputs.have_token == 'true'
         with:
           name: dist
           path: dist
 
       - name: Publish to TestPyPI
-        if: steps.check.outputs.have_token == 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           repository-url: https://test.pypi.org/legacy/
           packages-dir: dist
           # Allow retries on the same tag without failing the TestPyPI
@@ -224,53 +220,35 @@ jobs:
           skip-existing: true
 
   # ---------------------------------------------------------------------------
-  # 5. Optional PyPI publish. Runs only if PYPI_API_TOKEN is configured at the
-  #    repo/org level. If the secret is absent the job is skipped, so forks
-  #    and test releases (e.g. v0.0.0-rc1 on a fork without the secret) don't
-  #    error out.
+  # 5. Publish to PyPI via PyPI Trusted Publishing (OIDC).
   #
-  #    Depends on testpypi-publish so, when both tokens are configured, the
-  #    staging upload happens first and a broken upload fails the pipeline
-  #    before it touches real PyPI. When TEST_PYPI_API_TOKEN isn't set,
-  #    testpypi-publish no-ops and this job still runs.
+  #    Depends on testpypi-publish so the staging upload happens first and
+  #    a broken upload fails the pipeline before it touches real PyPI.
   #
-  #    NOTE: OIDC "trusted publishing" (pypa/gh-action-pypi-publish without a
-  #    token, configured on PyPI side) is the modern alternative and avoids
-  #    long-lived tokens entirely. Kept token-based here per request.
+  #    Same auth/fork-safety model as the TestPyPI job above: no long-lived
+  #    token; the `environment: pypi` is pre-registered on pypi.org against
+  #    this repo + this workflow filename.
   # ---------------------------------------------------------------------------
   pypi-publish:
-    name: Publish to PyPI (optional)
+    name: Publish to PyPI
     needs: [build, testpypi-publish]
     runs-on: ubuntu-latest
+    if: github.repository == 'dingxianzhong/inventory-pricing'
+    environment:
+      name: pypi
+      url: https://pypi.org/project/inventory-pricing/
+    permissions:
+      id-token: write   # required for OIDC trusted publishing
+      contents: read
     steps:
-      - name: Check for PYPI_API_TOKEN
-        id: check
-        env:
-          PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-        run: |
-          # See the matching note on the TestPyPI job above. A missing token
-          # here is the more serious case of the two — a silent skip means
-          # a tagged release that looks published in GitHub is not actually
-          # on PyPI. The annotation makes that state impossible to miss on
-          # the run summary page.
-          if [ -n "${PYPI_API_TOKEN:-}" ]; then
-            echo "have_token=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "have_token=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=PyPI publish skipped::PYPI_API_TOKEN secret is not set on this repository, so the PyPI upload was skipped. The workflow is not failing because forks and test-tag pushes intentionally tolerate missing secrets, but if you expected this tag to publish to PyPI, add the secret under Settings > Secrets and variables > Actions (https://github.com/${{ github.repository }}/settings/secrets/actions) and re-run this workflow. See issue #3 for the OIDC migration that removes this class of mistake."
-          fi
-
       - uses: actions/download-artifact@v4
-        if: steps.check.outputs.have_token == 'true'
         with:
           name: dist
           path: dist
 
       - name: Publish to PyPI
-        if: steps.check.outputs.have_token == 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
           packages-dir: dist
           # Fail loudly if a version is already on PyPI rather than silently
           # skipping — a duplicate upload almost always means a mis-tagged
