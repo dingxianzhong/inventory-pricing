@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "inventory"
+version = "2.0.0"
+# NOTE: `requires-python` is the pyproject.toml equivalent of setup.py's
+# `python_requires=">=3.10"`. setuptools propagates it to the built
+# distributions' `Requires-Python` metadata, so `pip install` on older
+# Pythons is refused automatically.
+requires-python = ">=3.10"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+classifiers = [
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries",
+]
+# NOTE: no legacy "License :: ..." classifier here.
+# PEP 639 / current setuptools reject legacy License classifiers when a
+# SPDX `license = "..."` expression is set above, and the SPDX form is
+# the authoritative source for PyPI going forward.
+
+[project.urls]
+Homepage = "https://github.com/acme-corp/inventory"
+Repository = "https://github.com/acme-corp/inventory"
+Changelog = "https://github.com/acme-corp/inventory/blob/main/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["inventory*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

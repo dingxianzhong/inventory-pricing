@@ -1,0 +1,260 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+# Permissions are job-scoped below; default to read-only at the workflow level.
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Re-run the test matrix on the tagged commit before we publish anything.
+  #    A green release should be a superset of a green CI run.
+  # ---------------------------------------------------------------------------
+  test:
+    name: pytest (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pytest
+      - run: python -m pytest tests/ -v
+
+  # ---------------------------------------------------------------------------
+  # 2. Build sdist + wheel, twine check, and run the same clean-venv
+  #    install-from-wheel smoke test we ran locally. Artifacts are uploaded
+  #    so downstream jobs (release, publish) don't re-build.
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build & verify dist
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build twine
+
+      - name: Verify tag matches package version
+        # Tag v2.0.0 must match inventory.__version__ / pyproject version.
+        # Prevents shipping a wheel whose metadata disagrees with the tag.
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG=$(python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          echo "tag=$TAG pkg=$PKG"
+          test "$TAG" = "$PKG"
+
+      - name: Build sdist + wheel
+        run: python -m build
+
+      - name: twine check
+        run: python -m twine check dist/*
+
+      - name: Clean-venv install-from-wheel smoke test
+        # Mirrors the local smoke test: fresh venv, cd out of the source tree,
+        # verify install path, __version__, strict=False warning prefix,
+        # public API, and metadata (license, URLs, classifiers).
+        run: |
+          set -euo pipefail
+          python -m venv /tmp/smoke
+          /tmp/smoke/bin/pip install --upgrade pip
+          /tmp/smoke/bin/pip install dist/inventory-*-py3-none-any.whl
+          cd /tmp
+          /tmp/smoke/bin/python - <<'PY'
+          import os, re
+          from importlib.metadata import metadata
+          import warnings
+
+          import inventory
+          from inventory.models import Product, Order
+          from inventory.pricing import compute_total
+
+          # 1. Installed from venv, not source.
+          assert "smoke" in os.path.dirname(inventory.__file__), inventory.__file__
+
+          # 2. __version__ is PEP 440-ish (no hard pin).
+          assert re.match(
+              r"^\d+(\.\d+)+((a|b|rc)\d+)?(\.post\d+)?(\.dev\d+)?(\+[A-Za-z0-9.]+)?$",
+              inventory.__version__,
+          ), inventory.__version__
+
+          # 3. strict=False warning has the documented stable prefix.
+          with warnings.catch_warnings(record=True) as rec:
+              warnings.simplefilter("always")
+              compute_total(
+                  Order(order_id="o", items=[("A", 1), ("MISSING", 1)]),
+                  {"A": Product(sku="A", name="n", unit_price=1.0)},
+                  strict=False,
+              )
+          prefix = "[inventory] compute_total(strict=False) is deprecated"
+          assert any(
+              issubclass(w.category, DeprecationWarning)
+              and str(w.message).startswith(prefix)
+              for w in rec
+          ), [str(w.message) for w in rec]
+
+          # 4. Metadata: license + URLs + classifiers.
+          m = metadata("inventory")
+          assert m["License-Expression"] == "Apache-2.0", m["License-Expression"]
+          assert m["Requires-Python"] == ">=3.10", m["Requires-Python"]
+          urls = dict(u.split(", ", 1) for u in (m.get_all("Project-URL") or []))
+          for k in ("Homepage", "Repository", "Changelog"):
+              assert k in urls, urls
+          cls = m.get_all("Classifier") or []
+          for c in [
+              "Programming Language :: Python :: 3 :: Only",
+              "Programming Language :: Python :: 3.10",
+              "Programming Language :: Python :: 3.11",
+              "Programming Language :: Python :: 3.12",
+              "Programming Language :: Python :: 3.13",
+          ]:
+              assert c in cls, f"missing classifier: {c}"
+          assert not any(c.startswith("License ::") for c in cls), \
+              [c for c in cls if c.startswith("License ::")]
+
+          print("smoke test OK")
+          PY
+
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # 3. Attach the built artifacts to the GitHub Release for this tag.
+  #    softprops/action-gh-release creates the release if it doesn't exist
+  #    and uses the tag message / CHANGELOG-style body if provided.
+  # ---------------------------------------------------------------------------
+  github-release:
+    name: GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # needed to create/update the Release and upload assets
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Create / update GitHub Release with artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+
+  # ---------------------------------------------------------------------------
+  # 4. Optional TestPyPI publish. Runs before the real PyPI step so we can
+  #    catch metadata / upload issues on the staging index first. Gated on
+  #    TEST_PYPI_API_TOKEN; absent secret ⇒ job is a no-op (doesn't fail).
+  #
+  #    Note: TestPyPI treats filename reuse the same as PyPI — you can't
+  #    re-upload the same version. `skip-existing: true` is intentional here
+  #    so re-running the workflow on the same tag (e.g. to retry the real
+  #    PyPI publish) doesn't error out on the TestPyPI side.
+  # ---------------------------------------------------------------------------
+  testpypi-publish:
+    name: Publish to TestPyPI (optional)
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for TEST_PYPI_API_TOKEN
+        id: check
+        env:
+          TEST_PYPI_API_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        run: |
+          if [ -n "${TEST_PYPI_API_TOKEN:-}" ]; then
+            echo "have_token=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "have_token=false" >> "$GITHUB_OUTPUT"
+            echo "TEST_PYPI_API_TOKEN not set; skipping TestPyPI publish."
+          fi
+
+      - uses: actions/download-artifact@v4
+        if: steps.check.outputs.have_token == 'true'
+        with:
+          name: dist
+          path: dist
+
+      - name: Publish to TestPyPI
+        if: steps.check.outputs.have_token == 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: dist
+          # Allow retries on the same tag without failing the TestPyPI
+          # upload. The real PyPI job below keeps skip-existing=false so
+          # duplicate production uploads still fail loud.
+          skip-existing: true
+
+  # ---------------------------------------------------------------------------
+  # 5. Optional PyPI publish. Runs only if PYPI_API_TOKEN is configured at the
+  #    repo/org level. If the secret is absent the job is skipped, so forks
+  #    and test releases (e.g. v0.0.0-rc1 on a fork without the secret) don't
+  #    error out.
+  #
+  #    Depends on testpypi-publish so, when both tokens are configured, the
+  #    staging upload happens first and a broken upload fails the pipeline
+  #    before it touches real PyPI. When TEST_PYPI_API_TOKEN isn't set,
+  #    testpypi-publish no-ops and this job still runs.
+  #
+  #    NOTE: OIDC "trusted publishing" (pypa/gh-action-pypi-publish without a
+  #    token, configured on PyPI side) is the modern alternative and avoids
+  #    long-lived tokens entirely. Kept token-based here per request.
+  # ---------------------------------------------------------------------------
+  pypi-publish:
+    name: Publish to PyPI (optional)
+    needs: [build, testpypi-publish]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for PYPI_API_TOKEN
+        id: check
+        env:
+          PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          if [ -n "${PYPI_API_TOKEN:-}" ]; then
+            echo "have_token=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "have_token=false" >> "$GITHUB_OUTPUT"
+            echo "PYPI_API_TOKEN not set; skipping PyPI publish."
+          fi
+
+      - uses: actions/download-artifact@v4
+        if: steps.check.outputs.have_token == 'true'
+        with:
+          name: dist
+          path: dist
+
+      - name: Publish to PyPI
+        if: steps.check.outputs.have_token == 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          packages-dir: dist
+          # Fail loudly if a version is already on PyPI rather than silently
+          # skipping — a duplicate upload almost always means a mis-tagged
+          # release.
+          skip-existing: false
