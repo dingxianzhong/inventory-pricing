@@ -23,11 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `end-of-file-fixer`, `trailing-whitespace`) and contributor docs
   added. See PRs #23, #24.
 - `inventory.models.Warehouse` — experimental `delete_on_zero`
-  constructor flag (default `False`). When `True`, `remove(sku, qty)`
-  deletes the SKU from `stock` when its count reaches `0`. Default
-  preserves existing behavior; no `DeprecationWarning` emitted either
-  way. This is a spike for the Option A proposal in #21 and may change
-  or be removed based on that issue's resolution.
+  constructor flag (default `False`, default-off, no behavior change).
+  When `True`, `remove(sku, qty)` deletes the SKU from `stock` on
+  reaching `0`. Spike for #21; API may change or be removed based on
+  that issue's resolution. See PR #26.
 
 ## [0.1.2rc1] - 2026-04-24
 
