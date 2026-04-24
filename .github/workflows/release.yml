@@ -190,11 +190,19 @@ jobs:
         env:
           TEST_PYPI_API_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
         run: |
+          # Emitting `::warning::` (rather than a plain echo) surfaces this
+          # as a yellow annotation on the workflow run summary page, not just
+          # buried in step logs. During the 0.1.1 release we shipped three
+          # green workflow runs in a row where publish was silently skipping
+          # because the secret had been added to the wrong scope; a loud
+          # annotation would have caught that in seconds. See issue #3 for
+          # the longer-term fix (migrating to OIDC trusted publishing, which
+          # removes the need for this guard entirely).
           if [ -n "${TEST_PYPI_API_TOKEN:-}" ]; then
             echo "have_token=true" >> "$GITHUB_OUTPUT"
           else
             echo "have_token=false" >> "$GITHUB_OUTPUT"
-            echo "TEST_PYPI_API_TOKEN not set; skipping TestPyPI publish."
+            echo "::warning title=TestPyPI publish skipped::TEST_PYPI_API_TOKEN secret is not set on this repository, so the TestPyPI upload was skipped. The workflow is not failing because forks and test-tag pushes intentionally tolerate missing secrets, but if you expected this tag to publish, add the secret under Settings > Secrets and variables > Actions (https://github.com/${{ github.repository }}/settings/secrets/actions) and re-run this workflow. See issue #3 for the OIDC migration that removes this class of mistake."
           fi
 
       - uses: actions/download-artifact@v4
@@ -240,11 +248,16 @@ jobs:
         env:
           PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: |
+          # See the matching note on the TestPyPI job above. A missing token
+          # here is the more serious case of the two — a silent skip means
+          # a tagged release that looks published in GitHub is not actually
+          # on PyPI. The annotation makes that state impossible to miss on
+          # the run summary page.
           if [ -n "${PYPI_API_TOKEN:-}" ]; then
             echo "have_token=true" >> "$GITHUB_OUTPUT"
           else
             echo "have_token=false" >> "$GITHUB_OUTPUT"
-            echo "PYPI_API_TOKEN not set; skipping PyPI publish."
+            echo "::warning title=PyPI publish skipped::PYPI_API_TOKEN secret is not set on this repository, so the PyPI upload was skipped. The workflow is not failing because forks and test-tag pushes intentionally tolerate missing secrets, but if you expected this tag to publish to PyPI, add the secret under Settings > Secrets and variables > Actions (https://github.com/${{ github.repository }}/settings/secrets/actions) and re-run this workflow. See issue #3 for the OIDC migration that removes this class of mistake."
           fi
 
       - uses: actions/download-artifact@v4
