@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- `inventory.__version__` is now sourced at import time from
+  `importlib.metadata.version("inventory-pricing")` instead of being
+  hard-coded in `inventory/__init__.py`. `pyproject.toml` is now the
+  single source of truth for the version string; drift between the two
+  is structurally impossible. For uninstalled source checkouts (where
+  the distribution isn't registered with `importlib.metadata`),
+  `__version__` falls back to the sentinel `"0.0.0+local"` so imports
+  never fail. See issue #2.
+
 ## [2.0.0] - 2026-04-24
 
 This is a major release with intentional breaking changes. Downstream
