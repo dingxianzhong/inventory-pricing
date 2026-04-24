@@ -5,6 +5,20 @@ All notable changes to this project are documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2rc1] - 2026-04-24
+
+Pre-release on TestPyPI only. First release cut via PyPI Trusted
+Publishing (OIDC) instead of long-lived API tokens; no code changes
+from 0.1.1. Purpose is to verify the migration landed in #6 works
+end-to-end before removing the `PYPI_API_TOKEN` / `TEST_PYPI_API_TOKEN`
+secrets and closing #3.
+
+### Changed
+
+- Release workflow now authenticates to PyPI / TestPyPI via OIDC
+  Trusted Publishing; no repo-level publish token is required. See
+  `CONTRIBUTING.md` → Releases and PR #6.
+
 ## [0.1.1] - 2026-04-24
 
 ### Changed
