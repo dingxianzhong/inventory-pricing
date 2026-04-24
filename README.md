@@ -129,3 +129,35 @@ python -m pytest tests/ -v
   with `qty == threshold` is reported.
 - `inventory.pricing.bulk_price` applies the 10% discount at `qty >= 100`
   (boundary included).
+- `inventory.models.Warehouse` has an **experimental `delete_on_zero`
+  constructor flag** (default `False`). When set to `True`,
+  `Warehouse.remove(sku, qty)` deletes the SKU from `stock` as soon as
+  its count reaches `0`, so `stock` only ever contains positive counts
+  and `add(new_sku, n) + remove(new_sku, n)` is a true no-op.
+
+  Design context and deprecation-timeline options are written up in
+  [RFC 021](docs/rfcs/021-delete-on-zero.md).
+
+  ```python
+  from inventory.models import Warehouse
+
+  # Default behavior (unchanged): zero-stock SKUs linger in `stock`.
+  w = Warehouse(name="w", stock={"A": 3})
+  w.remove("A", 3)
+  assert w.stock == {"A": 0}   # "A" still present with value 0
+
+  # Opt-in: zero-stock SKUs are removed from `stock`.
+  w = Warehouse(name="w", stock={"A": 3}, delete_on_zero=True)
+  w.remove("A", 3)
+  assert w.stock == {}          # "A" deleted on reaching 0
+  ```
+
+  The default (`False`) preserves existing behavior exactly — SKUs
+  removed to zero remain in `stock` with value `0`, and `monthly_report`
+  and `stock_alert(threshold=0)` continue to see them.
+
+  This flag is an opt-in toggle for the Option A proposal in
+  [#21](https://github.com/dingxianzhong/inventory-pricing/issues/21)
+  and may change or be removed based on that issue's resolution. No
+  deprecation warning is emitted by either default; this is a spike
+  for feedback, not a committed API.

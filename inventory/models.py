@@ -29,10 +29,22 @@ class Warehouse:
         ``stock_alert(threshold=0)``. Whether to collapse the two states
         is tracked as a design decision in issue #21:
         https://github.com/dingxianzhong/inventory-pricing/issues/21
+
+        The ``delete_on_zero`` constructor flag (default ``False``) is
+        an **experimental opt-in** toggle for the Option A behavior
+        proposed in #21: when ``True``, ``remove(sku, qty)`` deletes
+        the SKU from ``stock`` as soon as its count reaches ``0``, so
+        ``stock`` only ever contains positive counts. Default-off,
+        no warnings, no behavior change for existing callers; exists
+        purely to let downstreams experiment. Interface may change or
+        disappear in a future release based on #21's resolution.
     """
 
     name: str
     stock: dict[str, int] = field(default_factory=dict)
+    # Experimental — see class docstring and issue #21. Default False
+    # preserves existing behavior exactly.
+    delete_on_zero: bool = False
 
     def add(self, sku: str, qty: int) -> None:
         self.stock[sku] = self.stock.get(sku, 0) + qty
@@ -42,6 +54,8 @@ class Warehouse:
         if self.stock.get(sku, 0) < qty:
             return False
         self.stock[sku] -= qty
+        if self.delete_on_zero and self.stock[sku] == 0:
+            del self.stock[sku]
         return True
 
     def available(self, sku: str) -> int:
